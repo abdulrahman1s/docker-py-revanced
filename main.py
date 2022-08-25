@@ -262,7 +262,9 @@ class ArgParser(object):
     def get_excluded_patches(self) -> List[Any]:
         return self._EXCLUDED
 
-    def run(self, app: str, version: str, is_experimental: bool = False) -> None:
+    def run(
+        self, app: str, version: str, is_experimental: bool = False, root: bool = False
+    ) -> None:
         logger.debug(f"Sending request to revanced cli for building {app} revanced")
         args = [
             "-jar",
@@ -278,13 +280,16 @@ class ArgParser(object):
             "--keystore",
             keystore_name,
         ]
-        if is_experimental:
-            logger.debug("Using experimental features")
-            args.append("--experimental")
         if app in ("reddit", "tiktok"):
             args.remove("-m")
             args.remove("revanced-integrations.apk")
         args[1::2] = map(lambda i: temp_folder.joinpath(i), args[1::2])
+        if is_experimental:
+            logger.debug("Using experimental features")
+            args.append("--experimental")
+        if root:
+            logger.debug("Build root variant")
+            args.append("--mount")
         if app in ("reddit", "tiktok"):
             args.append("-r")
 
@@ -358,7 +363,7 @@ def main() -> None:
     def get_patches() -> None:
         logger.debug(f"Excluding patches for app {app}")
         excluded_patches = env.list(f"EXCLUDE_PATCH_{app}".upper(), [])
-        root_version = env.bool("YOUTUBE_ROOT_VERSION", False)
+        root_version = env.bool("YOUTUBE_ROOT_VERSION", True)
         if root_version:
             excluded_patches.append("microg-support")
         for patch in app_patches:
@@ -370,6 +375,7 @@ def main() -> None:
             logger.debug(f"Excluded patches {excluded} for {app}")
         else:
             logger.debug(f"No excluded patches for {app}")
+        return root_version
 
     def get_patches_version() -> Any:
         experiment = False
@@ -390,9 +396,11 @@ def main() -> None:
             logger.debug("Trying to build %s" % app)
             app_patches, version, is_experimental = get_patches_version()
             version = download_from_apkmirror(version, app, downloader)
-            get_patches()
+            rooted = get_patches()
             logger.debug(f"Downloaded {app}, version {version}")
-            arg_parser.run(app=app, version=version, is_experimental=is_experimental)
+            arg_parser.run(
+                app=app, version=version, is_experimental=is_experimental, root=rooted
+            )
         except Exception as e:
             logger.exception(f"Failed to build {app} because of {e}")
 
