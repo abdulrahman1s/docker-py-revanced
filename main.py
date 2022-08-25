@@ -22,11 +22,11 @@ session = Session()
 session.headers["User-Agent"] = "anything"
 supported_apps = [
     "youtube",
-    "youtube_music",
-    "twitter",
-    "reddit",
-    "tiktok",
-    "warnwetter",
+    # "youtube_music",
+    # "twitter",
+    # "reddit",
+    # "tiktok",
+    # "warnwetter",
 ]
 apps = env.list("PATCH_APPS", supported_apps)
 keystore_name = env.str("KEYSTORE_FILE_NAME", "revanced.keystore")
@@ -358,6 +358,9 @@ def main() -> None:
     def get_patches() -> None:
         logger.debug(f"Excluding patches for app {app}")
         excluded_patches = env.list(f"EXCLUDE_PATCH_{app}".upper(), [])
+        root_version = env.bool("YOUTUBE_ROOT_VERSION", False)
+        if root_version:
+            excluded_patches.append("microg-support")
         for patch in app_patches:
             arg_parser.include(patch["name"]) if patch[
                 "name"
